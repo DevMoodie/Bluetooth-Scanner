@@ -21,7 +21,11 @@ struct PeripheralDetailView: View {
                         ForEach(bluetoothVM.foundCharacteristics, id: \.self) { characteristic in
                             if let ser = characteristic.service, service.uuid == ser.uuid {
                                 Button {
-                                    // Write Actions
+                                    print("Characteristic Value: \(characteristic.readValue)")
+                                    print("Characteristic Properties: \(characteristic.properties)")
+                                    if characteristic.properties.contains("Write") {
+                                        bluetoothVM.writeValue(characteristic: characteristic.characteristic, data: Data(bytes: [1, 0, 2, 0, 3, 0, 21, 3, 14, 10]))
+                                    }
                                 } label: {
                                     VStack (alignment: .leading) {
                                         HStack {

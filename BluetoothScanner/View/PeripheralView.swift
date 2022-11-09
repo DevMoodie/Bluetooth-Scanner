@@ -28,7 +28,7 @@ struct PeripheralView: View {
                 RoundedRectangle(cornerRadius: 35.0)
                     .foregroundColor(.white)
                     .frame(width: 100, height: 20)
-                Text(peripheral.peripheral.state.string())
+                Text(peripheral.state.string())
                     .font(.caption2.smallCaps())
                     .foregroundColor(.black)
             }

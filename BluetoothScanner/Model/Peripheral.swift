@@ -12,13 +12,13 @@ class Peripheral: Identifiable, Hashable {
     var peripheral: CBPeripheral
     var name: String
     var advertisementData: [String: Any]
-    var macAddress: String
+    var macAddress: UUID
     var date: Date
     var state: CBPeripheralState
     var rssi: Int
     var discoverCount: Int
     
-    init(peripheral: CBPeripheral, name: String, macAddress: String, date: Date, state: CBPeripheralState, advData: [String: Any], rssi: NSNumber, discoverCount: Int) {
+    init(peripheral: CBPeripheral, name: String, macAddress: UUID, date: Date, state: CBPeripheralState, advData: [String: Any], rssi: NSNumber, discoverCount: Int) {
         self.id = UUID()
         self.peripheral = peripheral
         self.name = name

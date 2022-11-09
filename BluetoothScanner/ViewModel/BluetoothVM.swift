@@ -66,6 +66,7 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         disconnect()
         guard let connectPeripheral = peripheral else { return }
         connectedPeripheral = peripheral
+        connectedPeripheral?.peripheral.delegate = self
         guard let index = foundPeripherals.firstIndex(where: { $0.name == connectPeripheral.name }) else { return }
         self.foundPeripherals[index].state = .connecting
         self.centralManager?.connect(connectPeripheral.peripheral)
@@ -85,10 +86,18 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         case .name:
             self.foundPeripherals.sort(by: { $0.name < $1.name })
         case .mac:
-            self.foundPeripherals.sort(by: { $0.macAddress < $1.macAddress })
+            self.foundPeripherals.sort(by: { $0.macAddress.uuidString < $1.macAddress.uuidString  })
         case .last:
             self.foundPeripherals.sort(by: { $0.date < $1.date })
         }
+    }
+    
+    func writeValue(characteristic: CBCharacteristic, data: Data) {
+        print("Writing Data: \(data)")
+        guard let connectedPeripheral = connectedPeripheral else { return }
+        guard let peripheralIndex = foundPeripherals.firstIndex(where: { $0.name == connectedPeripheral.name }) else { return }
+        guard let index = foundCharacteristics.firstIndex(where: { $0.uuid.uuidString == characteristic.uuid.uuidString }) else { return }
+        self.foundPeripherals[peripheralIndex].peripheral.writeValue(data, for: self.foundCharacteristics[index].characteristic, type: .withResponse)
     }
     
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
@@ -123,7 +132,7 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         }
         
         let foundPeripheral: Peripheral = Peripheral(peripheral: peripheral,
-                                                     name: name, macAddress: "",
+                                                     name: name, macAddress: peripheral.identifier,
                                                      date: Date(), state: peripheral.state, advData: advertisementData,
                                                      rssi: RSSI, discoverCount: 0)
         
@@ -174,8 +183,15 @@ extension BluetoothViewModel: CBPeripheralDelegate {
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         service.characteristics?.forEach { characteristic in
+            var charProperties: [String] = []
+            if characteristic.properties.contains(.read) { charProperties.append("Read") }
+            if characteristic.properties.contains(.write) { charProperties.append("Write") }
+            if characteristic.properties.contains(.notify) { charProperties.append("Notify") }
+            if characteristic.properties.contains(.broadcast) { charProperties.append("Broadcast") }
+            if characteristic.properties.contains(.indicate) { charProperties.append("Indicate") }
+            
             let char = Characteristic(characteristic: characteristic,
-                                      description: "", uuid: characteristic.uuid,
+                                      description: "", properties: charProperties, uuid: characteristic.uuid,
                                       readValue: "", service: characteristic.service)
             
             foundCharacteristics.append(char)
@@ -197,8 +213,20 @@ extension BluetoothViewModel: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let characteristicValue = characteristic.value else { return }
         
-        if let index = foundCharacteristics.firstIndex(where: { $0.uuid.uuidString == characteristic.uuid.uuidString }) {
-            foundCharacteristics[index].readValue = characteristicValue.map({ String(format: "%02x", $0) }).joined()
+        if let index = foundCharacteristics.firstIndex(where: { $0.uuid.uuidString == characteristic.uuid.uuidString }),
+           let readValue = String(data: characteristicValue, encoding: .utf8) {
+            foundCharacteristics[index].readValue = readValue
+        }
+    }
+    
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard let characteristicValue = characteristic.value else { return }
+        
+        print("Characteristic Written: \(characteristic)")
+        
+        if let index = foundCharacteristics.firstIndex(where: { $0.uuid.uuidString == characteristic.uuid.uuidString }),
+           let readValue = String(data: characteristicValue, encoding: .utf8) {
+            foundCharacteristics[index].readValue = readValue
         }
     }
 }
